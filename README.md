@@ -10,15 +10,15 @@ Running the container
 $ sudo docker run -it -p 80:80 -p 443:443 -p 2015:2015 \
         --name=caddy \
         -e SERVER_DOMAIN=container.thiagozs.com \
-        -e LB_HOST=localhost 
+        -e LB_HOST=host.docker.internal 
         -e LB_PORT=8181 \
         -e EMAIL=yours@email.com \
-        -d thiagozs/caddyproxy:1.0.0
+        -d thiagozs/caddyproxy:1.0.1
 ```
 
 If you need the image local. Just docker pull the repo.
 ```
-$ sudo docker pull thiagozs/caddyproxy:1.0.0
+$ sudo docker pull thiagozs/caddyproxy:1.0.1
 ```
 
 Remember, you need open the ports **80**, **443**, **2015**. All envs need to be fill.

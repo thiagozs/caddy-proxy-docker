@@ -23,4 +23,4 @@ EOF
 cat $cfgfile
 sleep 2
 
-caddy -conf $cfgfile $@
+caddy -conf $cfgfile --agree=$ACME_AGREE $@
