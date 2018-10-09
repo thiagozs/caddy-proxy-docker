@@ -35,4 +35,4 @@ RUN mkdir -p /var/caddyproxy
 COPY /resources/startup.sh /var/caddyproxy/startup.sh
 
 #fireup
-ENTRYPOINT ["/var/caddyproxy/startup.sh"]
+ENTRYPOINT ["/bin/sh", "-c" , "echo $(ip -4 route list match 0/0 | awk '{print $3}') host.docker.internal >> /etc/hosts && exec /var/caddyproxy/startup.sh"]
