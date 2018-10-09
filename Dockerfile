@@ -1,32 +1,44 @@
-FROM golang:1.8.3-alpine
 
-MAINTAINER Thiago Zilli Sarmento <thiago.zilli@gmail.com>
+# Builder
+FROM abiosoft/caddy:builder as builder
 
-#user to fireup
-USER root
+ARG version="0.11.0"
+ARG plugins="git,filemanager,cors,realip,expires,cache,authz,jwt"
 
-#env version of caddy and arch
-LABEL caddy_version="0.10.4" architecture="amd64"
+# process wrapper
+RUN go get -v github.com/abiosoft/parent
 
-#Set timezone
-ENV TZ=America/Sao_Paulo
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+# Builder
+RUN VERSION=${version} PLUGINS=${plugins} /bin/sh /usr/bin/builder.sh
 
-# running apk add
-RUN apk add --no-cache git bash build-base
 
-# install caddyplug
-RUN go get -v github.com/abiosoft/caddyplug/caddyplug \
- && mv /go/bin/caddyplug /usr/bin/caddyplug \
- && /usr/bin/caddyplug list
+# Final stage
+FROM alpine:3.8
+LABEL maintainer "Thiago Zilli Sarmento <thiago.zilli@gmail.com>"
 
-# install caddy using caddyplug
-RUN /usr/bin/caddyplug install-caddy
+ARG version="0.11.0"
+LABEL caddy_version="$version"
+
+# Let's Encrypt Agreement
+ENV ACME_AGREE="true"
+
+RUN apk add --no-cache openssh-client git
+
+# install caddy
+COPY --from=builder /install/caddy /usr/bin/caddy
+
+# validate install
+RUN /usr/bin/caddy -version
+RUN /usr/bin/caddy -plugins
 
 EXPOSE 80 443 2015
+VOLUME /root/.caddy /srv
+WORKDIR /srv
 
-#VOLUME /root/.caddy
-VOLUME ["/root/.caddy", "/.caddy"]
+RUN apk add bash bash-completion bash-doc
+
+# install process wrapper
+COPY --from=builder /go/bin/parent /bin/parent
 
 #create a dir for config
 RUN mkdir -p /var/caddyproxy
@@ -34,5 +46,11 @@ RUN mkdir -p /var/caddyproxy
 #copy startup or bootstrap
 COPY /resources/startup.sh /var/caddyproxy/startup.sh
 
+#Set timezone
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 #fireup
-ENTRYPOINT ["/bin/sh", "-c" , "echo $(ip -4 route list match 0/0 | awk '{print $3}') host.docker.internal >> /etc/hosts && exec /var/caddyproxy/startup.sh"]
+#ENTRYPOINT ["/bin/parent", "caddy"]
+#CMD ["--conf", "/etc/Caddyfile", "--log", "stdout", "--agree=$ACME_AGREE"]
+ENTRYPOINT ["/bin/bash", "-c" , "echo $(ip -4 route list match 0/0 | awk '{print $3}') host.docker.internal >> /etc/hosts && /var/caddyproxy/startup.sh"]
